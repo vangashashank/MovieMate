@@ -1,46 +1,119 @@
-#  MovieMate: Conversational AI for Intelligent Movie Search
+---
+title: MovieMate
+emoji: 🎬
+colorFrom: indigo
+colorTo: purple
+sdk: gradio
+sdk_version: "4.31.0"
+app_file: app.py
+pinned: false
+license: mit
+---
 
-**MovieMate** is an intelligent conversational AI system designed to move beyond traditional keyword-based search. It combines **Natural Language Processing (NLP)** and **Large Language Models (LLMs)** with a structured movie dataset to create an intuitive, interactive discovery experience.
+# 🎬 MovieMate — Conversational AI Movie Assistant
 
-##  Project Overview
-The goal of this project is to assist users in navigating large entertainment datasets through natural language interactions. Instead of relying on rigid filters, MovieMate understands flexible queries like *"Suggest sci-fi movies similar to Interstellar but less than 2 hours long"*.
-
-##  Technical Architecture
-The system follows a **Retrieval-Augmented Generation (RAG)** pipeline:
-1. **Natural Language Understanding (NLU):** Uses the **Google Gemini 1.5 Flash** model to interpret user intent and extract semantic constraints (e.g., Genre, Year, Rating).
-2. **Vector Embeddings:** Movie metadata is converted into high-dimensional vectors using the `all-MiniLM-L6-v2` model.
-3. **Similarity Search:** Efficient nearest-neighbor search implemented with **FAISS (Facebook AI Similarity Search)** to identify the most relevant matches.
-4. **Response Generation:** Relevant movies are retrieved and processed by the LLM to generate natural, human-readable responses.
-5. **Interface:** A lightweight, web-based UI built with **Gradio** for real-time user interaction.
-
-##  Data Acquisition & Construction
-The dataset was programmatically constructed using the **TMDb (The Movie Database) API**.
-* **Source:** Real-world movie metadata retrieved programmatically to ensure structured access.
-* **Fields:** Includes Title, Rating, Year, Genre, Director, Cast, and Overview.
-* **Preprocessing:** Handled missing values, normalized text fields, and cleaned metadata to prepare it for embedding generation.
-
-##  Key Features
-* **Natural Language Search:** Query using conversational language instead of structured filters.
-* **Conversational Interaction:** Supports multi-turn dialogues, allowing users to refine queries (e.g., "Only those released after 2015").
-* **Intelligent Information Retrieval:** Extracts details such as Ratings, Genres, and Directors to build informative responses.
-* **Personalized Exploration:** Designed to potentially adapt recommendations based on user interaction patterns.
-
-##  Tech Stack
-* **Language:** Python 
-* **AI/ML:** Sentence-Transformers, FAISS, Google Generative AI (Gemini) 
-* **Data Science:** Pandas, NumPy 
-* **Visualization:** Matplotlib, Seaborn 
-* **UI:** Gradio
-
-##  Project Deliverables
-The project includes a **Jupyter Notebook** covering the following components:
-1. **Dataset Exploration:** Features, summary statistics, and observations.
-2. **Exploratory Data Analysis (EDA):** Visualizations of ratings and genres.
-3. **Data Preprocessing:** Cleaning, preparing, and handling missing values.
-4. **Embedding and Retrieval:** Generating vector representations and implementing similarity search.
-5. **Conversational Movie Chatbot:** Integrating retrieval with an LLM.
-6. **Interactive Interface:** Simple web interface for user interaction.
-7. **Evaluation and Reflection:** Performance observations and limitations.
+> Exploring Conversational AI for Intelligent Movie Search and Recommendations  
+> NLP Assignment — Hugging Face Spaces Deployment
 
 ---
-*Created by Vanga Shashank Goud as part of an NLP assignment focusing on LLM-powered information systems.*
+
+## What it does
+
+MovieMate lets you discover movies through natural conversation instead of rigid keyword search.  
+Ask in plain English — it retrieves semantically similar films and explains its recommendations.
+
+**Example queries**
+- *"Recommend a sci-fi movie like Inception"*
+- *"Movies starring Leonardo DiCaprio after 2010"*
+- *"Best feel-good films for a Friday night"*
+- *"Who directed Interstellar?"*
+
+---
+
+## Architecture
+
+| Layer | Technology |
+|---|---|
+| Dataset | TMDB API — ~1 000 movies with genres, cast, director |
+| Embeddings | `all-MiniLM-L6-v2` (SentenceTransformers) |
+| Vector search | FAISS `IndexFlatL2` |
+| Response generation | Gemini 1.5 Flash |
+| UI | Gradio 4 `Blocks` |
+
+**Pipeline per query:**
+1. Encode user query → 384-dim embedding  
+2. FAISS nearest-neighbour search (k=3)  
+3. Format retrieved movies + conversation history as context  
+4. Gemini generates a conversational, explained recommendation
+
+---
+
+## Setup (first-time / local)
+
+### 1. Clone and install
+```bash
+git clone https://huggingface.co/spaces/<your-username>/moviemate
+cd moviemate
+pip install -r requirements.txt
+```
+
+### 2. Set environment variables
+```bash
+export GEMINI_API_KEY="your-gemini-key"   # from https://aistudio.google.com
+export TMDB_API_KEY="your-tmdb-key"       # from https://www.themoviedb.org/settings/api
+```
+
+### 3. (Optional) Pre-fetch the dataset
+If `movies_updated.csv` is absent the app fetches it automatically on first launch (takes ~5 min).  
+To pre-generate and commit it:
+```bash
+python scripts/fetch_dataset.py
+```
+
+### 4. Run locally
+```bash
+python app.py
+```
+
+---
+
+## Hugging Face Spaces deployment
+
+### Secrets (required)
+In your Space → **Settings → Repository secrets**, add:
+
+| Secret name | Value |
+|---|---|
+| `GEMINI_API_KEY` | Your Google Gemini API key |
+| `TMDB_API_KEY` | Your TMDB API key (only needed if CSV is absent) |
+
+### Committing the dataset (recommended)
+Committing `movies_updated.csv` to the repo avoids the TMDB fetch on every cold start:
+```bash
+git lfs install           # HF uses LFS for large files automatically
+git add movies_updated.csv
+git commit -m "add pre-fetched dataset"
+git push
+```
+
+---
+
+## File structure
+
+```
+moviemate-hf/
+├── app.py                  # Main application (Gradio + RAG pipeline)
+├── requirements.txt        # Python dependencies
+├── README.md               # This file (also the HF Space card)
+├── scripts/
+│   └── fetch_dataset.py    # Standalone script to pre-build movies_updated.csv
+└── movies_updated.csv      # Pre-fetched dataset (commit this to avoid cold-start delay)
+```
+
+---
+
+## Notes
+
+- **Cold start**: If `movies_updated.csv` is absent, the app fetches ~1 000 movies from TMDB (≈5 min). Commit the CSV to avoid this.  
+- **Gemini quota**: The free tier allows ~60 requests/min. The app retries up to 3 times with back-off.  
+- **FAISS on CPU**: `faiss-cpu` is used for HF compatibility. Search over 1 000 movies is near-instant.
